@@ -2,7 +2,7 @@
 
 **Project:** CodeMemory — the coding assistant that remembers the codebase
 **Team:** solo (Coral Fox)
-**Repo:** https://github.com/coral-fox-12/codememory (to be pushed — code must be public for judging)
+**Repo:** https://github.com/coral-fox-12/codememory (public, pushed 2026-11-17 — 22 files on `main`, blob SHAs verified)
 **Demo:** (live URL to be added after deploy — Surge or local recording)
 **Video:** optional, ~2 min (see DEMO_SCRIPT.md)
 
@@ -19,12 +19,12 @@ Every coding session starts from zero: the agent re-learns your conventions, re-
 
 ## Why Meko
 
-Meko is the point: one datapack replaces the database + vector store + RAG pipeline + memory layer a team would otherwise stitch together, and `context_search` lets any agent read what another agent learned. The local JSON store in this repo implements Meko's exact memory model (add / search / promote / supersede) so the app runs offline; `src/meko-adapter.js` maps the same calls onto Meko's MCP endpoint for the real deployment.
+Meko is the point: one datapack replaces the database + vector store + RAG pipeline + memory layer a team would otherwise stitch together, and `context_search` lets any agent read what another agent learned. The local JSON store in this repo implements Meko's exact memory model (add / search / promote / supersede) so the app runs offline; `src/meko-adapter.js` maps the same calls onto Meko's MCP endpoint for the real deployment. With `MEKO_API_KEY` + `MEKO_DATAPACK_ID` set, the server mirrors every local write to Meko automatically (verified live 2026-11-17: write → `mirrored: 1` → recallable via `context_search`).
 
 ## Run it
 
 ```bash
-npm test     # 14/14 pass, zero dependencies
+npm test     # 18/18 pass, zero dependencies (incl. Meko mirror tests)
 npm run demo # ingest DEMO repo, run recall queries
 npm start    # http://localhost:8080
 ```
