@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeMemory — the agent that remembers the codebase</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a2e; }
+  h1 { font-size: 1.5rem; } .sub { color: #555; }
+  input, button { font-size: 1rem; padding: .5rem; }
+  #q { width: 70%; } button { cursor: pointer; }
+  .mem { border: 1px solid #ddd; border-left: 4px solid #4a6cf7; padding: .6rem .8rem; margin: .6rem 0; border-radius: 6px; }
+  .meta { font-size: .8rem; color: #666; }
+  .missing { background: #fff8e1; border: 1px solid #f0c36d; padding: .8rem; border-radius: 6px; }
+  .demo-note { font-size: .85rem; color: #777; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<h1>CodeMemory</h1>
+<p class="sub">The coding assistant that remembers the codebase. Ask a question — recall shows what the project remembers, with scores and sources. Nothing is invented: if no memory matches, it says so.</p>
+<form id="ask">
+  <input id="q" placeholder="e.g. how do we handle auth?" autocomplete="off">
+  <button type="submit">Recall</button>
+</form>
+<p><button id="ingest" type="button">Ingest the DEMO repo</button>
+<button id="list" type="button">List all memories</button></p>
+<div id="out"></div>
+<p class="demo-note">DEMO build — memories here come from the bundled demo repo (clearly labelled DEMO) or from what you type. The production store is a Meko datapack; see README.md.</p>
+<script>
+const out = document.getElementById('out');
+function memHtml(r) {
+  const m = r.memory;
+  const src = m.source && m.source.file ? ` · source: ${m.source.file}${m.source.line ? ':' + m.source.line : ''}` : '';
+  return `<div class="mem"><div>${m.text}</div><div class="meta">[${m.type} · score ${r.score} · ${m.scope} · confidence ${m.confidence}${src}]</div></div>`;
+}
+document.getElementById('ask').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+  const r = await fetch('/api/recall?q=' + encodeURIComponent(q)).then(x => x.json());
+  out.innerHTML = r.missing
+    ? `<div class="missing">${r.missing}</div>`
+    : r.results.map(memHtml).join('') || '<div class="missing">No matches.</div>';
+});
+document.getElementById('ingest').addEventListener('click', async () => {
+  const r = await fetch('/api/ingest', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dir: 'demo/fixture-repo' }) }).then(x => x.json());
+  out.innerHTML = `<p>Ingested DEMO repo: ${r.stored} memories stored (${r.scanned} found, ${r.blocked.length} blocked by hygiene).</p>` + r.memories.map(m => memHtml({ memory: m, score: '—' })).join('');
+});
+document.getElementById('list').addEventListener('click', async () => {
+  const r = await fetch('/api/memories').then(x => x.json());
+  out.innerHTML = `<p>${r.count} memories stored.</p>` + r.memories.map(m => memHtml({ memory: m, score: '—' })).join('');
+});
+</script>
+</body>
+</html>
