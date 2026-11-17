@@ -2,6 +2,8 @@
 
 Built for **ContextCon: Remember Everything** (YugabyteDB × HackerEarth, $10,000, deadline Mon 2027-01-18 00:30 VN).
 
+**Live demo:** https://codememory-contextcon.surge.sh (no sign-in; recall / ingest / add + hygiene gate / promote / trace, with the verified-live Meko mirror panel).
+
 A coding agent forgets everything about your codebase every time the session ends. CodeMemory fixes that: it ingests a repo into durable memories, recalls them with scores and provenance, and shares them across agents and sessions through a **Meko datapack** (YugabyteDB's context engine).
 
 ## What it does
