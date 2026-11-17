@@ -3,7 +3,7 @@
 **Project:** CodeMemory — the coding assistant that remembers the codebase
 **Team:** solo (Coral Fox)
 **Repo:** https://github.com/coral-fox-12/codememory (public, pushed 2026-11-17 — 22 files on `main`, blob SHAs verified)
-**Demo:** (live URL to be added after deploy — Surge or local recording)
+**Demo:** https://codememory-contextcon.surge.sh (live, no sign-in; self-contained static demo of the full memory loop — recall / ingest / add + hygiene gate / promote / trace / Meko-mirror evidence)
 **Video:** optional, ~2 min (see DEMO_SCRIPT.md)
 
 ## What it is
