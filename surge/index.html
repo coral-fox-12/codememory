@@ -5,32 +5,106 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CodeMemory — the agent that remembers the codebase</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; color: #1a1a2e; }
-  h1 { font-size: 1.5rem; margin-bottom: .2rem; } h2 { font-size: 1.15rem; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1rem; }
-  .sub { color: #555; }
-  input, select, textarea, button { font-size: 1rem; padding: .5rem; }
-  #q { width: 68%; } textarea { width: 100%; box-sizing: border-box; min-height: 3.2rem; }
-  button { cursor: pointer; }
-  .mem { border: 1px solid #ddd; border-left: 4px solid #4a6cf7; padding: .6rem .8rem; margin: .6rem 0; border-radius: 6px; }
-  .mem.shared { border-left-color: #2e9e5b; }
-  .meta { font-size: .8rem; color: #666; }
-  .missing { background: #fff8e1; border: 1px solid #f0c36d; padding: .8rem; border-radius: 6px; }
-  .refused { background: #fdecea; border: 1px solid #e0a19a; padding: .8rem; border-radius: 6px; }
-  .ok { background: #eaf7ee; border: 1px solid #9fd6ae; padding: .8rem; border-radius: 6px; }
-  .demo-note { font-size: .85rem; color: #777; margin-top: 2rem; }
-  .pill { display: inline-block; font-size: .75rem; background: #eef2ff; color: #334; border-radius: 999px; padding: .1rem .5rem; margin-right: .3rem; }
-  .trace { background: #f4f6ff; border: 1px solid #cdd6ff; padding: .8rem; border-radius: 6px; margin: .6rem 0; }
-  .small { font-size: .85rem; color: #555; }
-  code { background: #f2f2f2; padding: .1rem .3rem; border-radius: 3px; }
+  @font-face { font-family: 'Zilla Slab'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/zilla-slab-400.woff2') format('woff2'); }
+  @font-face { font-family: 'Zilla Slab'; font-style: normal; font-weight: 500; font-display: swap; src: url('fonts/zilla-slab-500.woff2') format('woff2'); }
+  @font-face { font-family: 'Zilla Slab'; font-style: normal; font-weight: 700; font-display: swap; src: url('fonts/zilla-slab-700.woff2') format('woff2'); }
+  @font-face { font-family: 'Zilla Slab'; font-style: italic; font-weight: 400; font-display: swap; src: url('fonts/zilla-slab-400-italic.woff2') format('woff2'); }
+  @font-face { font-family: 'Zilla Slab'; font-style: italic; font-weight: 500; font-display: swap; src: url('fonts/zilla-slab-500-italic.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/ibm-plex-mono-400.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url('fonts/ibm-plex-mono-500.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600; font-display: swap; src: url('fonts/ibm-plex-mono-600.woff2') format('woff2'); }
+  :root {
+    --paper: #f6f1e5; --card: #fbf8ef; --ink: #221d15; --muted: #6b6353;
+    --rule: #d9d1bd; --accent: #9e2b25; --green: #2e6b34; --amber: #8a6d1b; --red: #8f2f28;
+  }
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 2.5rem 1.25rem 3rem; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  a { color: var(--accent); }
+  /* ---- masthead: the lab notebook ---- */
+  .masthead { display: grid; grid-template-columns: 1.6fr 1fr; gap: 2.2rem; padding-bottom: 1.4rem; border-bottom: 2px solid var(--ink); }
+  .kicker { font-family: 'IBM Plex Mono', monospace; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin: 0 0 .7rem; }
+  h1 { font-family: 'Zilla Slab', serif; font-weight: 700; font-size: 3.4rem; line-height: .95; letter-spacing: -.01em; margin: 0 0 .7rem; }
+  .deck { font-family: 'Zilla Slab', serif; font-style: italic; font-weight: 500; font-size: 1.3rem; line-height: 1.35; margin: 0 0 .8rem; }
+  .sub { color: var(--muted); font-size: .95rem; margin: 0; }
+  .trav { border: 1px solid var(--ink); background: var(--card); padding: .9rem 1rem .8rem; }
+  .trav h3 { font-family: 'IBM Plex Mono', monospace; font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin: 0 0 .6rem; }
+  .trav ol { list-style: none; margin: 0 0 .6rem; padding: 0; font-size: .88rem; }
+  .trav ol li { padding: .28rem 0; border-bottom: 1px solid var(--rule); }
+  .trav ol li:last-child { border-bottom: none; }
+  .trav ol li span { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--ink); }
+  .trav ol li span::after { content: ' \2192'; color: var(--accent); }
+  .trav-foot { font-family: 'IBM Plex Mono', monospace; font-size: .74rem; color: var(--muted); margin: 0; border-top: 1px solid var(--rule); padding-top: .55rem; }
+  .contents { display: flex; flex-wrap: wrap; gap: .2rem 1.5rem; border-bottom: 1px solid var(--rule); padding: .6rem 0; font-family: 'IBM Plex Mono', monospace; font-size: .78rem; }
+  .contents a { color: var(--ink); text-decoration: none; }
+  .contents a:hover { color: var(--accent); }
+  .contents a b { color: var(--accent); font-weight: 600; }
+  /* ---- sections ---- */
+  h2 { font-family: 'Zilla Slab', serif; font-weight: 700; font-size: 1.6rem; line-height: 1.2; margin: 2.4rem 0 .5rem; border-top: 1px solid var(--rule); padding-top: 1.2rem; }
+  h2 .n { font-family: 'IBM Plex Mono', monospace; font-size: .78rem; font-weight: 600; color: var(--accent); letter-spacing: .1em; margin-right: .55rem; vertical-align: .3em; }
+  /* ---- forms & buttons ---- */
+  input, select, textarea, button { font: inherit; }
+  #q, #new-text, #new-type { font-family: 'IBM Plex Mono', monospace; font-size: .92rem; background: var(--card); border: 1px solid var(--ink); border-radius: 0; padding: .55rem .7rem; color: var(--ink); }
+  #q { flex: 1; min-width: 12rem; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 3.2rem; }
+  form#ask { display: flex; gap: .5rem; flex-wrap: wrap; }
+  button { font-family: 'IBM Plex Mono', monospace; font-size: .82rem; font-weight: 600; letter-spacing: .03em; padding: .55rem .9rem; border-radius: 0; cursor: pointer; background: var(--card); color: var(--ink); border: 1px solid var(--ink); }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: .55; cursor: default; }
+  button:disabled:hover { border-color: var(--ink); color: var(--ink); }
+  #ask button[type="submit"], #ingest, #add { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  #ask button[type="submit"]:hover, #ingest:hover, #add:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .try { font-size: .78rem; padding: .35rem .6rem; }
+  /* ---- memory cards: index cards ---- */
+  .mem { background: var(--card); border: 1px solid var(--rule); border-left: 3px solid var(--ink); padding: .7rem .9rem .8rem; margin: .7rem 0; border-radius: 0; }
+  .mem.shared { border-left-color: var(--green); }
+  .mem > div:first-child { font-family: 'Zilla Slab', serif; font-weight: 500; font-size: 1.08rem; line-height: 1.4; }
+  .meta { font-family: 'IBM Plex Mono', monospace; font-size: .76rem; color: var(--muted); margin-top: .35rem; }
+  .missing { background: #f3ead0; border: 1px solid var(--rule); border-left: 3px solid var(--amber); padding: .8rem .9rem; border-radius: 0; }
+  .refused { background: #f6e7e2; border: 1px solid var(--rule); border-left: 3px solid var(--red); padding: .8rem .9rem; border-radius: 0; }
+  .ok { background: #e9efe4; border: 1px solid var(--rule); border-left: 3px solid var(--green); padding: .8rem .9rem; border-radius: 0; }
+  .demo-note { font-size: .82rem; color: var(--muted); margin-top: 2.5rem; border-top: 1px solid var(--rule); padding-top: 1rem; }
+  .pill { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 0; padding: .05rem .4rem; margin-right: .3rem; }
+  .trace { background: var(--card); border: 1px solid var(--rule); border-left: 3px solid var(--accent); padding: .8rem .9rem; border-radius: 0; margin: .6rem 0; }
+  .trace strong { font-family: 'Zilla Slab', serif; font-size: 1.1rem; }
+  .small { font-size: .85rem; color: var(--muted); }
+  code { font-family: 'IBM Plex Mono', monospace; background: #ece5d2; padding: .1rem .3rem; border-radius: 0; font-size: .85em; }
   .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  @media (max-width: 640px) {
+    body { padding: 1.5rem 1rem 2.5rem; }
+    .masthead { grid-template-columns: 1fr; gap: 1.2rem; }
+    h1 { font-size: 2.4rem; }
+    h2 { font-size: 1.35rem; }
+    #q { width: 100%; }
+  }
 </style>
 </head>
 <body>
-<h1>CodeMemory</h1>
-<p class="sub">The coding assistant that remembers the codebase. Ask a question — recall shows what the project remembers, with scores and sources. Nothing is invented: if no memory matches, it says so.</p>
-<p class="small">Built for <strong>ContextCon: Remember Everything</strong> (YugabyteDB × HackerEarth). Memories live in a <strong>Meko datapack</strong> — one shared context layer for every agent and session. <a href="https://github.com/coral-fox-12/codememory">Public repo</a></p>
+<header class="masthead">
+  <div>
+    <p class="kicker">ContextCon · Remember Everything — YugabyteDB × HackerEarth</p>
+    <h1>CodeMemory</h1>
+    <p class="deck">The agent that remembers the codebase.</p>
+    <p class="sub">Ask a question — recall shows what the project remembers, with scores and sources. Nothing is invented: if no memory matches, it says so. Memories live in a <strong>Meko datapack</strong> — one shared context layer for every agent and session. <a href="https://github.com/coral-fox-12/codememory">Public repo</a></p>
+  </div>
+  <aside class="trav" aria-label="One traversal">
+    <h3>One traversal</h3>
+    <ol>
+      <li><span>test</span> — the question you ask</li>
+      <li><span>symbol</span> — checkout · respond · legacyCartTotal</li>
+      <li><span>file</span> — shop.js · respond.js · README.md</li>
+      <li><span>decision</span> — JWT, never sessions · shop.js:4</li>
+    </ol>
+    <p class="trav-foot">12 memories · 1 datapack · 0 invented answers</p>
+  </aside>
+</header>
+<nav class="contents" aria-label="Contents">
+  <a href="#s-recall"><b>01</b> Recall</a>
+  <a href="#s-ingest"><b>02</b> Ingest</a>
+  <a href="#s-add"><b>03</b> Add a memory</a>
+  <a href="#s-list"><b>04</b> All memories</a>
+  <a href="#s-meko"><b>05</b> Meko mirror</a>
+</nav>
 
-<h2>1 · Recall — ask the codebase</h2>
+<h2 id="s-recall"><span class="n">01</span>Recall — ask the codebase</h2>
 <form id="ask">
   <input id="q" placeholder="e.g. how do we handle auth?" autocomplete="off">
   <button type="submit">Recall</button>
@@ -42,14 +116,14 @@
 </p>
 <div id="recall-out"></div>
 
-<h2>2 · Ingest — scan a repo into memories</h2>
+<h2 id="s-ingest"><span class="n">02</span>Ingest — scan a repo into memories</h2>
 <p class="row">
   <button id="ingest" type="button">Ingest the DEMO repo</button>
   <button id="reset" type="button">Reset demo</button>
 </p>
 <div id="ingest-out"><p class="small">DEMO repo <code>demo/fixture-repo</code> is already ingested below: <strong>12 memories</strong> (decisions, conventions, gotchas, TODOs, exports), each with file + line provenance. All data here is invented for the demo and labelled DEMO.</p></div>
 
-<h2>3 · Add a memory — with the hygiene gate</h2>
+<h2 id="s-add"><span class="n">03</span>Add a memory — with the hygiene gate</h2>
 <p><textarea id="new-text" placeholder="e.g. DECISION: We retry the payment gateway once on a 5xx before failing the order."></textarea></p>
 <p class="row">
   <select id="new-type">
@@ -63,12 +137,12 @@
 <div id="add-out"></div>
 <p class="small">Memories you add are stored in <em>your browser only</em> (localStorage) for this demo. The hygiene gate refuses credential-like text at the write boundary — secrets never land in shared memory. Try it: the button above attempts <code>api_key = "sk_live_4f8a2c..."</code>.</p>
 
-<h2>4 · All memories — promote &amp; trace</h2>
+<h2 id="s-list"><span class="n">04</span>All memories — promote &amp; trace</h2>
 <p class="small">Private by default; <strong>Promote</strong> moves a memory into shared team knowledge (one-way, like Meko — there is no un-promote). <strong>Trace</strong> shows everything the project remembers about that memory's file.</p>
 <div id="list-out"></div>
 <div id="trace-out"></div>
 
-<h2>5 · Meko mirror — verified live</h2>
+<h2 id="s-meko"><span class="n">05</span>Meko mirror — verified live</h2>
 <div class="ok">
   <p><strong>Datapack <code>codememory</code></strong> (id <code>45597bba-0148-458c-b12a-e301359f3dd2</code>) — live round-trip verified <strong>2026-11-17 ~12:03 +07</strong>:</p>
   <ul>
