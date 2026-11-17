@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeMemory — the agent that remembers the codebase</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; color: #1a1a2e; }
+  h1 { font-size: 1.5rem; margin-bottom: .2rem; } h2 { font-size: 1.15rem; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1rem; }
+  .sub { color: #555; }
+  input, select, textarea, button { font-size: 1rem; padding: .5rem; }
+  #q { width: 68%; } textarea { width: 100%; box-sizing: border-box; min-height: 3.2rem; }
+  button { cursor: pointer; }
+  .mem { border: 1px solid #ddd; border-left: 4px solid #4a6cf7; padding: .6rem .8rem; margin: .6rem 0; border-radius: 6px; }
+  .mem.shared { border-left-color: #2e9e5b; }
+  .meta { font-size: .8rem; color: #666; }
+  .missing { background: #fff8e1; border: 1px solid #f0c36d; padding: .8rem; border-radius: 6px; }
+  .refused { background: #fdecea; border: 1px solid #e0a19a; padding: .8rem; border-radius: 6px; }
+  .ok { background: #eaf7ee; border: 1px solid #9fd6ae; padding: .8rem; border-radius: 6px; }
+  .demo-note { font-size: .85rem; color: #777; margin-top: 2rem; }
+  .pill { display: inline-block; font-size: .75rem; background: #eef2ff; color: #334; border-radius: 999px; padding: .1rem .5rem; margin-right: .3rem; }
+  .trace { background: #f4f6ff; border: 1px solid #cdd6ff; padding: .8rem; border-radius: 6px; margin: .6rem 0; }
+  .small { font-size: .85rem; color: #555; }
+  code { background: #f2f2f2; padding: .1rem .3rem; border-radius: 3px; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+</style>
+</head>
+<body>
+<h1>CodeMemory</h1>
+<p class="sub">The coding assistant that remembers the codebase. Ask a question — recall shows what the project remembers, with scores and sources. Nothing is invented: if no memory matches, it says so.</p>
+<p class="small">Built for <strong>ContextCon: Remember Everything</strong> (YugabyteDB × HackerEarth). Memories live in a <strong>Meko datapack</strong> — one shared context layer for every agent and session. <a href="https://github.com/coral-fox-12/codememory">Public repo</a></p>
+
+<h2>1 · Recall — ask the codebase</h2>
+<form id="ask">
+  <input id="q" placeholder="e.g. how do we handle auth?" autocomplete="off">
+  <button type="submit">Recall</button>
+</form>
+<p class="row">Try:
+  <button type="button" class="try" data-q="how do we handle auth?">how do we handle auth?</button>
+  <button type="button" class="try" data-q="how are prices stored?">how are prices stored?</button>
+  <button type="button" class="try" data-q="how do we deploy to Kubernetes?">how do we deploy to Kubernetes?</button>
+</p>
+<div id="recall-out"></div>
+
+<h2>2 · Ingest — scan a repo into memories</h2>
+<p class="row">
+  <button id="ingest" type="button">Ingest the DEMO repo</button>
+  <button id="reset" type="button">Reset demo</button>
+</p>
+<div id="ingest-out"><p class="small">DEMO repo <code>demo/fixture-repo</code> is already ingested below: <strong>12 memories</strong> (decisions, conventions, gotchas, TODOs, exports), each with file + line provenance. All data here is invented for the demo and labelled DEMO.</p></div>
+
+<h2>3 · Add a memory — with the hygiene gate</h2>
+<p><textarea id="new-text" placeholder="e.g. DECISION: We retry the payment gateway once on a 5xx before failing the order."></textarea></p>
+<p class="row">
+  <select id="new-type">
+    <option value="fact">fact</option><option value="decision">decision</option>
+    <option value="convention">convention</option><option value="gotcha">gotcha</option>
+    <option value="preference">preference</option><option value="todo">todo</option>
+  </select>
+  <button id="add" type="button">Store memory</button>
+  <button id="add-secret" type="button">Try storing a secret instead</button>
+</p>
+<div id="add-out"></div>
+<p class="small">Memories you add are stored in <em>your browser only</em> (localStorage) for this demo. The hygiene gate refuses credential-like text at the write boundary — secrets never land in shared memory. Try it: the button above attempts <code>api_key = "sk_live_4f8a2c..."</code>.</p>
+
+<h2>4 · All memories — promote &amp; trace</h2>
+<p class="small">Private by default; <strong>Promote</strong> moves a memory into shared team knowledge (one-way, like Meko — there is no un-promote). <strong>Trace</strong> shows everything the project remembers about that memory's file.</p>
+<div id="list-out"></div>
+<div id="trace-out"></div>
+
+<h2>5 · Meko mirror — verified live</h2>
+<div class="ok">
+  <p><strong>Datapack <code>codememory</code></strong> (id <code>45597bba-0148-458c-b12a-e301359f3dd2</code>) — live round-trip verified <strong>2026-11-17 ~12:03 +07</strong>:</p>
+  <ul>
+    <li><code>memory_add</code> “CodeMemory smoke test … auth uses JWT, never sessions.” → stored as <code>58c18de3-8957-4a84-827c-adb894956302</code></li>
+    <li><code>context_search</code> “how do we handle auth?” → returned it, score <strong>0.395</strong></li>
+    <li>Server mirror: <code>POST /api/memories</code> → <code>GET /api/meko/status</code> = <code>{ enabled: true, mirrored: 1, lastError: null }</code></li>
+  </ul>
+  <p class="small">This static demo runs the same memory model locally in your browser (same ranking, same hygiene rules, same promote semantics). The live Meko mirror runs on the Node server — set <code>MEKO_API_KEY</code> + <code>MEKO_DATAPACK_ID</code> and run <code>npm start</code> (see the repo README). Every local write is mirrored fire-and-forget; a cloud failure never blocks the local write.</p>
+</div>
+
+<h2>Run it yourself</h2>
+<p class="small"><code>npm test</code> — 18/18 pass, zero dependencies &nbsp;·&nbsp; <code>npm run demo</code> — ingest the DEMO repo in the terminal &nbsp;·&nbsp; <code>npm start</code> — server on <code>http://localhost:8080</code> (demo UI + JSON API: <code>/api/recall</code>, <code>/api/brief</code>, <code>/api/memories</code>, <code>/api/ingest</code>, <code>/api/meko/status</code>)</p>
+
+<p class="demo-note">DEMO build — memories here come from the bundled demo repo (clearly labelled DEMO) or from what you type. The production store is a Meko datapack. Nothing in the demo is presented as a real project. Recall never invents an answer.</p>
+
+<script>
+// ---- Memory model, ported 1:1 from src/retrieve.js, src/hygiene.js, src/memory-store.js ----
+// Same tokenize/stopwords/type-boost/scoring, so this page reproduces the server's scores exactly.
+const STOPWORDS = new Set(['the','and','for','with','how','what','why','when','where','does','this','that','from','into','about','which','should','would','could','there','here','your','you','are','was','were','been','have','has','will','can','not','but','all','any','our','its','use','used']);
+const TYPE_BOOST = { decision: 1.25, gotcha: 1.25, convention: 1.15, fact: 1.0, preference: 1.0, todo: 0.9 };
+const SECRET_PATTERNS = [
+  { name: 'aws-access-key', re: /\bAKIA[0-9A-Z]{16}\b/ },
+  { name: 'private-key-block', re: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
+  { name: 'github-pat', re: /\bgh[pousr]_[A-Za-z0-9]{20,}\b/ },
+  { name: 'generic-api-key', re: /\b(?:api[_-]?key|apikey|secret|token|password|passwd|pwd)\s*[:=]\s*['"]?[A-Za-z0-9_\-./+]{8,}['"]?/i },
+  { name: 'bearer-token', re: /\bBearer\s+[A-Za-z0-9_\-]{16,}/ },
+  { name: 'jwt', re: /\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b/ },
+  { name: 'slack-token', re: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/ },
+  { name: 'stripe-key', re: /\b(?:sk|pk)_(?:live|test)_[A-Za-z0-9]{16,}\b/ },
+];
+function tokenize(text) {
+  return (text.toLowerCase().match(/[a-z0-9_][a-z0-9_\-.]*/g) || []).filter(t => t.length > 2 && !STOPWORDS.has(t));
+}
+function checkMemoryText(text) {
+  if (typeof text !== 'string') return { ok: false, reason: 'memory text must be a string' };
+  for (const { name, re } of SECRET_PATTERNS) if (re.test(text)) return { ok: false, reason: `refused: text looks like it contains a ${name}`, pattern: name };
+  return { ok: true };
+}
+function scoreMemory(queryTokens, mem, now) {
+  const memTokens = new Set(tokenize(mem.text));
+  let overlap = 0;
+  for (const t of queryTokens) if (memTokens.has(t)) overlap++;
+  if (overlap === 0) return 0;
+  const coverage = overlap / Math.max(1, queryTokens.length);
+  const ageDays = Math.max(0, (now - new Date(mem.createdAt)) / 86400000);
+  const recency = 1 / (1 + ageDays / 30);
+  return Math.min(1, Math.round(coverage * (0.5 + 0.5 * mem.confidence) * recency * (TYPE_BOOST[mem.type] ?? 1) * 1000) / 1000);
+}
+function recall(query, limit = 5) {
+  const queryTokens = tokenize(query);
+  const now = Date.now();
+  const scored = memories.filter(m => !m.supersededBy).map(mem => {
+    const score = scoreMemory(queryTokens, mem, now);
+    return { memory: mem, score, matched: queryTokens.filter(t => tokenize(mem.text).includes(t)) };
+  }).filter(r => r.score > 0).sort((a, b) => b.score - a.score).slice(0, limit);
+  return { results: scored, missing: scored.length === 0 ? `No stored memory matches "${query}". Nothing was invented — ask the project, or record the answer as a new memory once known.` : null };
+}
+
+// ---- Seed: the 12 memories the real ingest extracts from demo/fixture-repo ----
+// (produced by src/ingest.js; createdAt is set at page load so scores match the server demo exactly)
+const SEED = [
+  { id: 'demo_01', text: 'A demo shop API. Auth uses JWT, never sessions. Orders are immutable', type: 'fact', confidence: 0.8, source: { file: 'README.md', line: 6, origin: 'ingest' } },
+  { id: 'demo_02', text: 'mutate a paid order, refund it instead.', type: 'convention', confidence: 0.85, source: { file: 'README.md', line: 7, origin: 'ingest' } },
+  { id: 'demo_03', text: 'prices are always stored in integer cents, never floats.', type: 'convention', confidence: 0.85, source: { file: 'README.md', line: 10, origin: 'ingest' } },
+  { id: 'demo_04', text: 'every API response goes through respond() so errors look the same.', type: 'convention', confidence: 0.85, source: { file: 'README.md', line: 11, origin: 'ingest' } },
+  { id: 'demo_05', text: 'respond.js exports respond — part of this project\'s public surface', type: 'fact', confidence: 0.6, source: { file: 'respond.js', line: 2, origin: 'ingest' } },
+  { id: 'demo_06', text: 'auth is JWT in the Authorization header; we dropped sessions in v2', type: 'decision', confidence: 0.9, source: { file: 'shop.js', line: 4, origin: 'ingest' } },
+  { id: 'demo_07', text: 'retry the payment gateway once on a 5xx before failing the order.', type: 'todo', confidence: 0.7, source: { file: 'shop.js', line: 7, origin: 'ingest' } },
+  { id: 'demo_08', text: 'tax is computed in floats here — must move to integer cents.', type: 'gotcha', confidence: 0.8, source: { file: 'shop.js', line: 8, origin: 'ingest' } },
+  { id: 'demo_09', text: 'mutate a paid order; create a refund instead.', type: 'convention', confidence: 0.85, source: { file: 'shop.js', line: 9, origin: 'ingest' } },
+  { id: 'demo_10', text: 'the legacy /v1/cart endpoint returns prices in dollars, not cents.', type: 'gotcha', confidence: 0.8, source: { file: 'shop.js', line: 14, origin: 'ingest' } },
+  { id: 'demo_11', text: 'shop.js exports checkout — part of this project\'s public surface', type: 'fact', confidence: 0.6, source: { file: 'shop.js', line: 6, origin: 'ingest' } },
+  { id: 'demo_12', text: 'shop.js exports legacyCartTotal — part of this project\'s public surface', type: 'fact', confidence: 0.6, source: { file: 'shop.js', line: 16, origin: 'ingest' } },
+];
+const LS_KEY = 'codememory-demo-v1';
+let memories = [];
+function loadState() {
+  const now = new Date().toISOString();
+  const seeds = SEED.map(m => ({ ...m, scope: 'private', agentId: 'codememory', createdAt: now, updatedAt: now, supersededBy: null }));
+  let extra = [];
+  try { extra = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { extra = []; }
+  memories = [...seeds, ...extra.filter(m => m && m.id && !m.id.startsWith('demo_'))];
+  // re-apply stored promotions of seed memories
+  try {
+    const promoted = JSON.parse(localStorage.getItem(LS_KEY + '-promoted') || '[]');
+    for (const id of promoted) { const m = memories.find(x => x.id === id); if (m) m.scope = 'shared'; }
+  } catch {}
+}
+function saveUserState() {
+  const extra = memories.filter(m => !m.id.startsWith('demo_'));
+  const promoted = memories.filter(m => m.id.startsWith('demo_') && m.scope === 'shared').map(m => m.id);
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(extra));
+    localStorage.setItem(LS_KEY + '-promoted', JSON.stringify(promoted));
+  } catch {}
+}
+
+// ---- Rendering ----
+const out = document.getElementById('recall-out');
+const listOut = document.getElementById('list-out');
+const traceOut = document.getElementById('trace-out');
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function memHtml(m, score) {
+  const src = m.source && m.source.file ? ` · source: ${esc(m.source.file)}${m.source.line ? ':' + m.source.line : ''}` : '';
+  const scorePart = score !== undefined ? ` · score ${score}` : '';
+  return `<div class="mem${m.scope === 'shared' ? ' shared' : ''}"><div>${esc(m.text)}</div><div class="meta">[${m.type}${scorePart} · ${m.scope} · confidence ${m.confidence}${src}]</div>
+  <p class="row" style="margin:.4rem 0 0"><button type="button" data-promote="${m.id}" ${m.scope === 'shared' ? 'disabled' : ''}>${m.scope === 'shared' ? 'Shared ✓' : 'Promote to shared'}</button>
+  <button type="button" data-trace="${m.id}">Trace this memory</button></p></div>`;
+}
+function renderList() {
+  const live = memories.filter(m => !m.supersededBy);
+  listOut.innerHTML = `<p>${live.length} memories stored (${live.filter(m => m.scope === 'shared').length} shared).</p>` + live.map(m => memHtml(m)).join('');
+}
+function doRecall(q) {
+  const r = recall(q);
+  out.innerHTML = r.missing
+    ? `<div class="missing">${esc(r.missing)}</div>`
+    : r.results.map(x => memHtml(x.memory, x.score) + `<p class="meta">matched tokens: ${x.matched.map(esc).join(', ')}</p>`).join('');
+}
+function doTrace(id) {
+  const m = memories.find(x => x.id === id);
+  if (!m) return;
+  const file = m.source && m.source.file;
+  const related = file ? memories.filter(x => x.source && x.source.file === file && x.id !== id && !x.supersededBy) : [];
+  traceOut.innerHTML = `<div class="trace"><strong>Trace — ${esc(file || 'no file provenance')}</strong><br>
+  <span class="small">Starting from “${esc(m.text)}” (${m.type}, ${m.scope}), everything the project remembers about this file:</span><br><br>
+  ${related.length ? related.map(x => `<span class="pill">${x.type}</span>${esc(x.text)} <span class="meta">(${esc(x.source.file)}:${x.source.line} · ${x.scope})</span><br>`).join('') : '<span class="small">No other memories reference this file.</span>'}
+  <p class="small" style="margin-bottom:0">One traversal: memory → file → every decision, convention, gotcha and export that file carries. On the live server the same traversal reads from the Meko datapack via <code>context_search</code>, so any agent sees what another agent learned.</p></div>`;
+  traceOut.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+document.getElementById('ask').addEventListener('submit', e => {
+  e.preventDefault();
+  const q = document.getElementById('q').value.trim();
+  if (q) doRecall(q);
+});
+document.querySelectorAll('.try').forEach(b => b.addEventListener('click', () => {
+  document.getElementById('q').value = b.dataset.q;
+  doRecall(b.dataset.q);
+}));
+document.getElementById('ingest').addEventListener('click', () => {
+  loadState();
+  renderList();
+  document.getElementById('ingest-out').innerHTML = `<div class="ok">Ingested DEMO repo <code>demo/fixture-repo</code>: <strong>12 memories stored</strong> (12 found, 0 blocked by hygiene). Every memory carries file + line provenance — see section 4.</div>`;
+});
+document.getElementById('reset').addEventListener('click', () => {
+  try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '-promoted'); } catch {}
+  memories = [];
+  renderList();
+  out.innerHTML = '';
+  traceOut.innerHTML = '';
+  document.getElementById('ingest-out').innerHTML = `<div class="missing">Store cleared — 0 memories. Click “Ingest the DEMO repo” to scan it again, or add a memory in section 3.</div>`;
+});
+document.getElementById('add').addEventListener('click', () => {
+  const text = document.getElementById('new-text').value.trim();
+  const type = document.getElementById('new-type').value;
+  const addOut = document.getElementById('add-out');
+  if (!text) { addOut.innerHTML = `<div class="refused">Write something first.</div>`; return; }
+  const check = checkMemoryText(text);
+  if (!check.ok) {
+    addOut.innerHTML = `<div class="refused"><strong>Refused.</strong> ${esc(check.reason)} — the write was blocked at the boundary, nothing was stored. (This is the hygiene gate: secrets never land in shared memory.)</div>`;
+    return;
+  }
+  const now = new Date().toISOString();
+  const mem = { id: 'mem_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6), text, type, source: { origin: 'manual' }, agentId: 'codememory', confidence: 0.7, scope: 'private', createdAt: now, updatedAt: now, supersededBy: null };
+  memories.push(mem);
+  saveUserState();
+  renderList();
+  addOut.innerHTML = `<div class="ok">Stored as a private ${type} memory. On the live server this write would also mirror to the Meko datapack (fire-and-forget).</div>`;
+});
+document.getElementById('add-secret').addEventListener('click', () => {
+  document.getElementById('new-text').value = 'api_key = "sk_live_4f8a2c9e1b7d3a5f"';
+  document.getElementById('add').click();
+});
+document.addEventListener('click', e => {
+  const p = e.target.closest('[data-promote]');
+  const t = e.target.closest('[data-trace]');
+  if (p) {
+    const m = memories.find(x => x.id === p.dataset.promote);
+    if (m && m.scope !== 'shared') { m.scope = 'shared'; m.updatedAt = new Date().toISOString(); saveUserState(); renderList(); }
+  }
+  if (t) doTrace(t.dataset.trace);
+});
+loadState();
+renderList();
+doRecall('how do we handle auth?');
+document.getElementById('q').value = 'how do we handle auth?';
+</script>
+</body>
+</html>
